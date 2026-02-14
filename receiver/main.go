@@ -31,19 +31,23 @@ func handleConn(conn net.Conn) {
 			log.Println("Client disconnected")
 			return
 		}
-
 		switch frame.Type {
 
-		case common.FramePing:
-			pong := common.Frame{
-				Type:    common.FramePong,
-				Payload: nil,
-			}
-			conn.Write(common.EncodeFrame(pong))
+case common.FramePing:
+	pong := common.Frame{
+		Type:     common.FramePong,
+		StreamID: 0,
+	}
+	conn.Write(common.EncodeFrame(pong))
 
-		case common.FrameData:
-			log.Println("Received DATA:", string(frame.Payload))
-		}
+case common.FrameData:
+	log.Printf("Received DATA (Stream %d): %s",
+		frame.StreamID,
+		string(frame.Payload),
+	)
+}
+
+
 	}
 }
 

@@ -13,23 +13,23 @@ func main() {
 	cm.Start()
 
 	// Simulated stream traffic
-go func() {
-	for {
-		if cm.IsConnected() {
-			frame := common.Frame{
-				Type:    common.FrameData,
-				Payload: []byte("hello"),
-			}
+        go func() {
+            for {
+                if cm.IsConnected() {
+                        frame := common.Frame{
+                        Type:     common.FrameData,
+                        StreamID: 1, // 👈 Stream 1
+                        Payload:  []byte("hello"),
+                 }
+       log.Println("Sending DATA frame")
+           cm.Send(common.EncodeFrame(frame))
+                } else {
+                    log.Println("Connection not established, skipping DATA send")
+                }
 
-			log.Println("Sending DATA frame")
-			cm.Send(common.EncodeFrame(frame))
-		} else {
-			log.Println("Connection not established, skipping DATA send")
-		}
-
-		time.Sleep(1 * time.Second)
-	}
-}()
+                time.Sleep(1 * time.Second)
+            }
+        }()
 
 	log.Println("Sender running...")
 	select {}

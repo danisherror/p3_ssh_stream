@@ -121,9 +121,10 @@ func (cm *ConnManager) heartbeatLoop() {
 
 	for range ticker.C {
 		frame := common.Frame{
-			Type:    common.FramePing,
-			Payload: nil,
-		}
+	Type:     common.FramePing,
+	StreamID: 0, // Control stream
+	Payload:  nil,
+}
 		cm.Send(common.EncodeFrame(frame))
 	}
 }
