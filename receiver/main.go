@@ -60,7 +60,13 @@ Type:     common.FramePong,
                                               frame.StreamID,
                                               string(frame.Payload),
                                         )
+response := common.Frame{
+    Type:     common.FrameData,
+    StreamID: frame.StreamID,
+    Payload:  []byte("echo: " + string(frame.Payload)),
+}
 
+conn.Write(common.EncodeFrame(response))
                                       // Send window update
                                       update := make([]byte, 4)
                                       binary.BigEndian.PutUint32(update, uint32(len(frame.Payload)))

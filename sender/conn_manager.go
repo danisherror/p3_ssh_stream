@@ -105,6 +105,10 @@ streamID := frame.StreamID
                                                 cm.mu.RUnlock()
 
                                                 if stream != nil {
+log.Printf("Received DATA from receiver (Stream %d): %s\n",
+            frame.StreamID,
+            string(frame.Payload),
+        )
                                                         stream.handleIncoming(frame.Payload)
                                                 } else {
                                                         log.Println("Unknown stream:", frame.StreamID)
