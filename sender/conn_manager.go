@@ -79,7 +79,22 @@ func (cm *ConnManager) readLoop(conn net.Conn) {
 		}
 
                 switch frame.Type {
-                        case common.FramePong:
+                      case common.FrameWindowUpdate:
+streamID := frame.StreamID
+                increment := binary.BigEndian.Uint32(frame.Payload)
+
+                cm.mu.RLock()
+                stream := cm.streams[streamID]
+                cm.mu.RUnlock()
+
+                if stream != nil {
+                      stream.mu.Lock()
+                            stream.window += increment
+                            stream.mu.Unlock()
+
+                            log.Printf("Window updated (Stream %d +%d)\n", streamID, increment)
+                }
+                      case common.FramePong:
                                 cm.mu.Lock()
                                         cm.lastPong = time.Now()
                                         cm.mu.Unlock()
@@ -100,24 +115,10 @@ func (cm *ConnManager) readLoop(conn net.Conn) {
                                                 cm.mu.Unlock()
 
                                                 log.Println("Stream closed by peer:", frame.StreamID)
-                        case common.FrameWindowUpdate:
-                                                cm.mu.RLock()
-                                                        stream := cm.streams[frame.StreamID]
-                                                        cm.mu.RUnlock()
-
-                                                        if stream != nil {
-increment := int(binary.BigEndian.Uint32(frame.Payload))
-
-                   stream.mu.Lock()
-                   stream.window += increment
-                   stream.mu.Unlock()
-
-                   log.Printf("Stream %d window increased by %d",
-                                   frame.StreamID, increment)
                                                         }
 
                 }
-	}
+
 }
 
 func (cm *ConnManager) cleanupConnection() {
