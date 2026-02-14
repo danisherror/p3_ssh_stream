@@ -20,6 +20,8 @@ type ConnManager struct {
 	sendCh chan []byte
 
 	lastPong time.Time
+ 	streams map[uint32]*Stream
+	nextID  uint32
 }
 
 func NewConnManager(addr string) *ConnManager {
@@ -28,6 +30,8 @@ func NewConnManager(addr string) *ConnManager {
 		state:    common.StateDisconnected,
 		sendCh:   make(chan []byte, 100),
 		lastPong: time.Now(),
+		streams:  make(map[uint32]*Stream),
+		nextID:   1,
 	}
 }
 
@@ -81,7 +85,17 @@ func (cm *ConnManager) readLoop(conn net.Conn) {
 			cm.mu.Unlock()
 
 		case common.FrameData:
-			log.Println("Received DATA:", string(frame.Payload))
+			cm.mu.RLock()
+			stream := cm.streams[frame.StreamID]
+			cm.mu.RUnlock()
+
+			if stream != nil {
+				stream.handleIncoming(frame.Payload)
+			} else {
+				log.Println("Unknown stream:", frame.StreamID)
+			}
+
+
 		}
 	}
 }
@@ -182,5 +196,20 @@ func (cm *ConnManager) IsConnected() bool {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
 	return cm.state == common.StateConnected
+}
+
+func (cm *ConnManager) CreateStream() *Stream {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	id := cm.nextID
+	cm.nextID++
+
+	stream := NewStream(id, cm)
+	cm.streams[id] = stream
+
+	log.Println("Created stream", id)
+
+	return stream
 }
 

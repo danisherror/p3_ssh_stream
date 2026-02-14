@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"time"
-        "p3_ssh_stream/common"
 )
 
 func main() {
@@ -12,24 +11,26 @@ func main() {
 	cm := NewConnManager(addr)
 	cm.Start()
 
-	// Simulated stream traffic
-        go func() {
-            for {
-                if cm.IsConnected() {
-                        frame := common.Frame{
-                        Type:     common.FrameData,
-                        StreamID: 1, // 👈 Stream 1
-                        Payload:  []byte("hello"),
-                 }
-       log.Println("Sending DATA frame")
-           cm.Send(common.EncodeFrame(frame))
-                } else {
-                    log.Println("Connection not established, skipping DATA send")
-                }
+	stream1 := cm.CreateStream()
+	stream2 := cm.CreateStream()
 
-                time.Sleep(1 * time.Second)
-            }
-        }()
+	go func() {
+		for {
+			if cm.IsConnected() {
+				stream1.Send([]byte("hello from stream1"))
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
+	go func() {
+		for {
+			if cm.IsConnected() {
+				stream2.Send([]byte("hello from stream2"))
+			}
+			time.Sleep(1500 * time.Millisecond)
+		}
+	}()
 
 	log.Println("Sender running...")
 	select {}
