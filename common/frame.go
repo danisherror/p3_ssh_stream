@@ -5,10 +5,13 @@ import (
 	"io"
 )
 
+
 const (
-	FramePing uint8 = 1
-	FramePong uint8 = 2
-	FrameData uint8 = 3
+        FramePing        uint8 = 1
+        FramePong        uint8 = 2
+        FrameData        uint8 = 3
+        FrameStreamOpen  uint8 = 4
+        FrameStreamClose uint8 = 5
 )
 
 type Frame struct {

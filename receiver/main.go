@@ -25,29 +25,43 @@ func main() {
 func handleConn(conn net.Conn) {
 	defer conn.Close()
 
+	streams := make(map[uint32]bool)
+
 	for {
 		frame, err := common.DecodeFrame(conn)
 		if err != nil {
 			log.Println("Client disconnected")
 			return
 		}
+
 		switch frame.Type {
 
-case common.FramePing:
-	pong := common.Frame{
-		Type:     common.FramePong,
-		StreamID: 0,
-	}
-	conn.Write(common.EncodeFrame(pong))
+		case common.FramePing:
+			pong := common.Frame{
+				Type:     common.FramePong,
+				StreamID: 0,
+			}
+			conn.Write(common.EncodeFrame(pong))
 
-case common.FrameData:
-	log.Printf("Received DATA (Stream %d): %s",
-		frame.StreamID,
-		string(frame.Payload),
-	)
-}
+		case common.FrameStreamOpen:
+			streams[frame.StreamID] = true
+			log.Println("Stream opened:", frame.StreamID)
 
+		case common.FrameStreamClose:
+			delete(streams, frame.StreamID)
+			log.Println("Stream closed:", frame.StreamID)
 
+		case common.FrameData:
+			if !streams[frame.StreamID] {
+				log.Println("DATA for unopened stream:", frame.StreamID)
+				continue
+			}
+
+			log.Printf("Received DATA (Stream %d): %s",
+				frame.StreamID,
+				string(frame.Payload),
+			)
+		}
 	}
 }
 

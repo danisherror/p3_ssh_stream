@@ -78,25 +78,30 @@ func (cm *ConnManager) readLoop(conn net.Conn) {
 			return
 		}
 
-		switch frame.Type {
-		case common.FramePong:
-			cm.mu.Lock()
-			cm.lastPong = time.Now()
-			cm.mu.Unlock()
+                switch frame.Type {
+                      case common.FramePong:
+                            cm.mu.Lock()
+                                  cm.lastPong = time.Now()
+                                  cm.mu.Unlock()
 
-		case common.FrameData:
-			cm.mu.RLock()
-			stream := cm.streams[frame.StreamID]
-			cm.mu.RUnlock()
+                      case common.FrameData:
+                                  cm.mu.RLock()
+                                        stream := cm.streams[frame.StreamID]
+                                        cm.mu.RUnlock()
 
-			if stream != nil {
-				stream.handleIncoming(frame.Payload)
-			} else {
-				log.Println("Unknown stream:", frame.StreamID)
-			}
+                                        if stream != nil {
+                                              stream.handleIncoming(frame.Payload)
+                                        } else {
+                                              log.Println("Unknown stream:", frame.StreamID)
+                                        }
+                      case common.FrameStreamClose:
+                                  cm.mu.Lock()
+                                        delete(cm.streams, frame.StreamID)
+                                        cm.mu.Unlock()
 
+                                        log.Println("Stream closed by peer:", frame.StreamID)
 
-		}
+                }
 	}
 }
 
@@ -200,7 +205,6 @@ func (cm *ConnManager) IsConnected() bool {
 
 func (cm *ConnManager) CreateStream() *Stream {
 	cm.mu.Lock()
-	defer cm.mu.Unlock()
 
 	id := cm.nextID
 	cm.nextID++
@@ -208,7 +212,17 @@ func (cm *ConnManager) CreateStream() *Stream {
 	stream := NewStream(id, cm)
 	cm.streams[id] = stream
 
+	cm.mu.Unlock() // 🔥 unlock BEFORE sending frame
+
 	log.Println("Created stream", id)
+
+	// Now safe to send
+	openFrame := common.Frame{
+		Type:     common.FrameStreamOpen,
+		StreamID: id,
+	}
+
+	cm.Send(common.EncodeFrame(openFrame))
 
 	return stream
 }
