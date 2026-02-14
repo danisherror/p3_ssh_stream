@@ -8,11 +8,18 @@ import (
 func main() {
 	addr := "localhost:9000"
 
-	cm := NewConnManager(addr)
-	cm.Start()
+cm := NewConnManager(addr)
+cm.Start()
 
-	stream1 := cm.CreateStream()
-	stream2 := cm.CreateStream()
+// Wait until connected
+for !cm.IsConnected() {
+    time.Sleep(100 * time.Millisecond)
+}
+
+log.Println("Connection established. Creating streams...")
+
+stream1 := cm.CreateStream()
+stream2 := cm.CreateStream()
 
 	go func() {
 		for {

@@ -12,6 +12,7 @@ const (
         FrameData        uint8 = 3
         FrameStreamOpen  uint8 = 4
         FrameStreamClose uint8 = 5
+	FrameWindowUpdate uint8 = 6
 )
 
 type Frame struct {
