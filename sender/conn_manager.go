@@ -79,6 +79,18 @@ func (cm *ConnManager) readLoop(conn net.Conn) {
 		}
 
                 switch frame.Type {
+
+case common.FrameStreamReset:
+    cm.mu.Lock()
+    delete(cm.streams, frame.StreamID)
+    cm.mu.Unlock()
+
+    log.Printf("Stream %d was reset by receiver: %s\n",
+        frame.StreamID,
+        string(frame.Payload),
+    )
+
+
                       case common.FrameWindowUpdate:
 streamID := frame.StreamID
                 increment := binary.BigEndian.Uint32(frame.Payload)
@@ -248,5 +260,29 @@ stream := &Stream{
     log.Println("Sent STREAM_OPEN:", id)
 
     return stream
+}
+func (s *Stream) Reset(reason string) {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+
+    if s.closed {
+        return
+    }
+
+    s.closed = true
+
+    frame := common.Frame{
+        Type:     common.FrameStreamReset,
+        StreamID: s.id,
+        Payload:  []byte(reason),
+    }
+
+    log.Printf("Sending STREAM_RESET (%d): %s\n", s.id, reason)
+
+    s.cm.Send(common.EncodeFrame(frame))
+
+    s.cm.mu.Lock()
+    delete(s.cm.streams, s.id)
+    s.cm.mu.Unlock()
 }
 

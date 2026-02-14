@@ -36,6 +36,15 @@ func handleConn(conn net.Conn) {
 
 		switch frame.Type {
 
+case common.FrameStreamReset:
+    log.Printf("Stream %d reset: %s\n",
+        frame.StreamID,
+        string(frame.Payload),
+    )
+
+    delete(streams, frame.StreamID)
+
+
                         case common.FramePing:
 pong := common.Frame{
 Type:     common.FramePong,
