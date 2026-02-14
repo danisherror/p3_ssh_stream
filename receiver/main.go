@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"log"
 	"net"
+	"strings"
 )
 
 func main() {
@@ -16,17 +18,30 @@ func main() {
 		conn, _ := ln.Accept()
 		log.Println("Client connected")
 
-		go func(c net.Conn) {
-			buf := make([]byte, 1024)
-			for {
-				n, err := c.Read(buf)
-				if err != nil {
-					log.Println("Client disconnected")
-					return
-				}
-				log.Printf("Received: %s", string(buf[:n]))
-			}
-		}(conn)
+		go handleConn(conn)
+	}
+}
+
+func handleConn(conn net.Conn) {
+	defer conn.Close()
+
+	reader := bufio.NewReader(conn)
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			log.Println("Client disconnected")
+			return
+		}
+
+		line = strings.TrimSpace(line)
+
+		if line == "PING" {
+			conn.Write([]byte("PONG\n"))
+			continue
+		}
+
+		log.Println("Received:", line)
 	}
 }
 
