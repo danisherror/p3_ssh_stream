@@ -1,10 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"log"
 	"net"
-	"strings"
+
+	"p3_ssh_stream/common"
 )
 
 func main() {
@@ -25,23 +25,25 @@ func main() {
 func handleConn(conn net.Conn) {
 	defer conn.Close()
 
-	reader := bufio.NewReader(conn)
-
 	for {
-		line, err := reader.ReadString('\n')
+		frame, err := common.DecodeFrame(conn)
 		if err != nil {
 			log.Println("Client disconnected")
 			return
 		}
 
-		line = strings.TrimSpace(line)
+		switch frame.Type {
 
-		if line == "PING" {
-			conn.Write([]byte("PONG\n"))
-			continue
+		case common.FramePing:
+			pong := common.Frame{
+				Type:    common.FramePong,
+				Payload: nil,
+			}
+			conn.Write(common.EncodeFrame(pong))
+
+		case common.FrameData:
+			log.Println("Received DATA:", string(frame.Payload))
 		}
-
-		log.Println("Received:", line)
 	}
 }
 

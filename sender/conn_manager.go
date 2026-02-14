@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"log"
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -69,21 +67,21 @@ func (cm *ConnManager) connectionLoop() {
 }
 
 func (cm *ConnManager) readLoop(conn net.Conn) {
-	reader := bufio.NewReader(conn)
-
 	for {
-		line, err := reader.ReadString('\n')
+		frame, err := common.DecodeFrame(conn)
 		if err != nil {
 			log.Println("Read error:", err)
 			return
 		}
 
-		line = strings.TrimSpace(line)
-
-		if line == "PONG" {
+		switch frame.Type {
+		case common.FramePong:
 			cm.mu.Lock()
 			cm.lastPong = time.Now()
 			cm.mu.Unlock()
+
+		case common.FrameData:
+			log.Println("Received DATA:", string(frame.Payload))
 		}
 	}
 }
@@ -122,7 +120,11 @@ func (cm *ConnManager) heartbeatLoop() {
 	ticker := time.NewTicker(3 * time.Second)
 
 	for range ticker.C {
-		cm.Send([]byte("PING\n"))
+		frame := common.Frame{
+			Type:    common.FramePing,
+			Payload: nil,
+		}
+		cm.Send(common.EncodeFrame(frame))
 	}
 }
 
@@ -150,6 +152,15 @@ func (cm *ConnManager) healthMonitorLoop() {
 }
 
 func (cm *ConnManager) Send(data []byte) {
+	cm.mu.RLock()
+	state := cm.state
+	cm.mu.RUnlock()
+
+	if state != common.StateConnected {
+		log.Println("Dropping frame, not connected")
+		return
+	}
+
 	select {
 	case cm.sendCh <- data:
 	default:
@@ -165,5 +176,10 @@ func (cm *ConnManager) setState(s common.ConnState) {
 		log.Println("State:", s.String())
 		cm.state = s
 	}
+}
+func (cm *ConnManager) IsConnected() bool {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+	return cm.state == common.StateConnected
 }
 
